@@ -1,12 +1,12 @@
 const { Sequelize } = require("sequelize");
 
 const sequelize = new Sequelize(
-    "hackathon_db",
-    "root",
-    "1234",
+    process.env.DB_NAME,
+    process.env.DB_USER,
+    process.env.DB_PASSWORD,
     {
-        host: "localhost",
-        dialect: "mysql",
+        host: process.env.DB_HOST,
+        dialect: "mysql"
     }
 );
 
