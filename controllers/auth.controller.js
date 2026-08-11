@@ -5,10 +5,9 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const RefreshToken = require("../models/RefreshToken");
 
-const {
-    generateAccessToken,
-    generateRefreshToken
-} = require("../utils/jwt");
+const { generateAccessToken, generateRefreshToken } = require("../utils/jwt");
+const issueTokens = require("../utils/issueTokens");
+const isValidPassword = require("../utils/validatePassword");
 
 
 // =========================
@@ -34,10 +33,7 @@ const registerUser = async (req, res) => {
         }
 
         // Strong password validation
-        const passwordRegex =
-            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-
-        if (!passwordRegex.test(password)) {
+        if (!isValidPassword(password)) {
             return res.status(400).json({
                 message:
                     "Password must be at least 8 characters and contain uppercase, lowercase, number and special character"
@@ -94,6 +90,13 @@ const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        // Check required fields
+        if (!email || !password) {
+            return res.status(400).json({
+                message: "Email and password are required"
+            });
+        }
+
         // Find user by email
         const user = await User.findOne({
             where: { email }
@@ -117,20 +120,8 @@ const loginUser = async (req, res) => {
             });
         }
 
-        // Generate access token
-        const accessToken = generateAccessToken(user);
-
-        // Generate refresh token
-        const refreshToken = generateRefreshToken(user);
-
-        // Save refresh token in database
-        await RefreshToken.create({
-            token: refreshToken,
-            userId: user.id,
-            expiresAt: new Date(
-                Date.now() + 7 * 24 * 60 * 60 * 1000
-            )
-        });
+        // Issue access and refresh tokens
+        const { accessToken, refreshToken } = await issueTokens(user);
 
         // Send tokens to client
         res.status(200).json({
@@ -201,17 +192,24 @@ const refreshAccessToken = async (req, res) => {
             });
         }
 
-        // 5. Create new access token
-        const newAccessToken = generateAccessToken({
-            id: decoded.id
-        });
+        // 5. Re-fetch the user so role/account data stays current
+        const user = await User.findByPk(decoded.id);
 
-        // 6. Create new refresh token
-        const newRefreshToken = generateRefreshToken({
-            id: decoded.id
-        });
+        if (!user) {
+            await storedToken.destroy();
 
-        // 7. Replace old refresh token with new one
+            return res.status(401).json({
+                message: "User no longer exists"
+            });
+        }
+
+        // 6. Create new access token from fresh user data
+        const newAccessToken = generateAccessToken(user);
+
+        // 7. Create new refresh token
+        const newRefreshToken = generateRefreshToken(user);
+
+        // 8. Replace old refresh token with new one
         storedToken.token = newRefreshToken;
 
         storedToken.expiresAt = new Date(
@@ -220,7 +218,7 @@ const refreshAccessToken = async (req, res) => {
 
         await storedToken.save();
 
-        // 8. Return both tokens
+        // 9. Return both tokens
         res.status(200).json({
             accessToken: newAccessToken,
             refreshToken: newRefreshToken

@@ -32,12 +32,21 @@ const User = sequelize.define("User", {
 
 // Relationship
 const RefreshToken = require("./RefreshToken");
+const PasswordResetToken = require("./PasswordResetToken");
 
 User.hasMany(RefreshToken, {
     foreignKey: "userId"
 });
 
 RefreshToken.belongsTo(User, {
+    foreignKey: "userId"
+});
+
+User.hasMany(PasswordResetToken, {
+    foreignKey: "userId"
+});
+
+PasswordResetToken.belongsTo(User, {
     foreignKey: "userId"
 });
 

@@ -1,33 +1,13 @@
 require("dotenv").config();
 
-const express = require("express");
+const app = require("./app");
 const sequelize = require("./config/database");
-const User = require("./models/User");
 const chalk = require("chalk");
 
-const app = express();
-
-app.use(express.json());
+// Import models so Sequelize knows about them
+require("./models/User");
 
 const PORT = process.env.PORT || 5000;
-
-// Routes
-const authRoutes = require("./routes/auth.routes");
-
-app.use("/api/v1/auth", authRoutes);
-
-app.get("/", (req, res) => {
-    res.send("Hackathon Backend is running!");
-});
-
-app.post("/test", (req, res) => {
-    console.log(req.body);
-
-    res.json({
-        message: "Data received!",
-        data: req.body
-    });
-});
 
 // Connect database first
 sequelize
