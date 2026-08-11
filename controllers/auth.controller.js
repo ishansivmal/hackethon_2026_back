@@ -90,6 +90,13 @@ const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        // Check required fields
+        if (!email || !password) {
+            return res.status(400).json({
+                message: "Email and password are required"
+            });
+        }
+
         // Find user by email
         const user = await User.findOne({
             where: { email }
