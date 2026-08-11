@@ -58,3 +58,21 @@ git pull
 ```bash
 node seeders/seedUsers.js
 ```
+npm run test:auth   →  58 passed, 58 total ✅
+npm run test:admin  →  10 passed, 10 total ✅
+npm test            →  All 68 tests pass ✅
+
+
+
+
+SET SQL_SAFE_UPDATES = 0;
+
+DELETE FROM RefreshTokens 
+WHERE userId IN (SELECT id FROM Users WHERE role = 'user');
+
+DELETE FROM PasswordResetTokens 
+WHERE userId IN (SELECT id FROM Users WHERE role = 'user');
+
+DELETE FROM Users WHERE role = 'user';
+
+SET SQL_SAFE_UPDATES = 1;
