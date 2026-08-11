@@ -16,8 +16,10 @@ const PORT = process.env.PORT || 5000;
 
 // Routes
 const authRoutes = require("./routes/auth.routes");
+const adminRoutes = require("./routes/admin.routes");
 
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/admin", adminRoutes);
 
 app.get("/", (req, res) => {
     res.send("Hackathon Backend is running!");

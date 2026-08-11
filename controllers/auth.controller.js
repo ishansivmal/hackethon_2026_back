@@ -185,17 +185,24 @@ const refreshAccessToken = async (req, res) => {
             });
         }
 
-        // 5. Create new access token
-        const newAccessToken = generateAccessToken({
-            id: decoded.id
-        });
+        // 5. Re-fetch the user so role/account data stays current
+        const user = await User.findByPk(decoded.id);
 
-        // 6. Create new refresh token
-        const newRefreshToken = generateRefreshToken({
-            id: decoded.id
-        });
+        if (!user) {
+            await storedToken.destroy();
 
-        // 7. Replace old refresh token with new one
+            return res.status(401).json({
+                message: "User no longer exists"
+            });
+        }
+
+        // 6. Create new access token from fresh user data
+        const newAccessToken = generateAccessToken(user);
+
+        // 7. Create new refresh token
+        const newRefreshToken = generateRefreshToken(user);
+
+        // 8. Replace old refresh token with new one
         storedToken.token = newRefreshToken;
 
         storedToken.expiresAt = new Date(
@@ -204,7 +211,7 @@ const refreshAccessToken = async (req, res) => {
 
         await storedToken.save();
 
-        // 8. Return both tokens
+        // 9. Return both tokens
         res.status(200).json({
             accessToken: newAccessToken,
             refreshToken: newRefreshToken
