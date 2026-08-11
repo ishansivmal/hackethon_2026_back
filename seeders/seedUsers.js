@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const bcrypt = require("bcryptjs");
 const sequelize = require("../config/database");
 const User = require("../models/User");

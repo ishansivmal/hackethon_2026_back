@@ -7,6 +7,13 @@ const {
     logoutUser
 } = require("../controllers/auth.controller");
 
+const { googleAuth } = require("../controllers/google.controller");
+
+const {
+    forgotPassword,
+    resetPassword
+} = require("../controllers/password.controller");
+
 const router = express.Router();
 
 const authorizeRoles = require("../middleware/role.middleware");
@@ -16,9 +23,15 @@ router.post("/register", registerUser);
 
 router.post("/login", loginUser);
 
+router.post("/google", googleAuth);
+
 router.post("/refresh", refreshAccessToken);
 
 router.post("/logout", logoutUser);
+
+router.post("/forgot-password", forgotPassword);
+
+router.post("/reset-password", resetPassword);
 
 
 // Protected profile route
