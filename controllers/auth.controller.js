@@ -5,10 +5,9 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const RefreshToken = require("../models/RefreshToken");
 
-const {
-    generateAccessToken,
-    generateRefreshToken
-} = require("../utils/jwt");
+const { generateAccessToken, generateRefreshToken } = require("../utils/jwt");
+const issueTokens = require("../utils/issueTokens");
+const isValidPassword = require("../utils/validatePassword");
 
 
 // =========================
@@ -34,10 +33,7 @@ const registerUser = async (req, res) => {
         }
 
         // Strong password validation
-        const passwordRegex =
-            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-
-        if (!passwordRegex.test(password)) {
+        if (!isValidPassword(password)) {
             return res.status(400).json({
                 message:
                     "Password must be at least 8 characters and contain uppercase, lowercase, number and special character"
@@ -117,20 +113,8 @@ const loginUser = async (req, res) => {
             });
         }
 
-        // Generate access token
-        const accessToken = generateAccessToken(user);
-
-        // Generate refresh token
-        const refreshToken = generateRefreshToken(user);
-
-        // Save refresh token in database
-        await RefreshToken.create({
-            token: refreshToken,
-            userId: user.id,
-            expiresAt: new Date(
-                Date.now() + 7 * 24 * 60 * 60 * 1000
-            )
-        });
+        // Issue access and refresh tokens
+        const { accessToken, refreshToken } = await issueTokens(user);
 
         // Send tokens to client
         res.status(200).json({
