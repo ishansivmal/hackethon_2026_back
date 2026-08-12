@@ -9,7 +9,9 @@ module.exports = (sequelize, DataTypes) => {
         static associate(models) {
             EmailVerificationToken.belongsTo(models.User, {
                 foreignKey: 'userId',
-                as: 'user'
+                as: 'user',
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE'
             });
         }
     }
