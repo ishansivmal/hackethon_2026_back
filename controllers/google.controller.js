@@ -46,8 +46,13 @@ const googleAuth = async (req, res) => {
             user = await User.create({
                 name,
                 email,
-                password: hashedPassword
+                password: hashedPassword,
+                emailVerified: true // Google already verified the email
             });
+        } else if (!user.emailVerified) {
+            user.emailVerified = true;
+
+            await user.save();
         }
 
         // Issue access and refresh tokens
@@ -61,7 +66,8 @@ const googleAuth = async (req, res) => {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                emailVerified: user.emailVerified
             }
         });
 

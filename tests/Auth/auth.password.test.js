@@ -1,6 +1,10 @@
 const request = require("supertest");
 const app = require("../../app");
 
+jest.mock("../../config/email", () => ({
+    sendEmail: jest.fn().mockResolvedValue({ messageId: "mocked" })
+}));
+
 // ─── POST /api/v1/auth/forgot-password
 // ─── POST /api/v1/auth/reset-password ────────────────────────────────────────
 

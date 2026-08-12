@@ -1,13 +1,24 @@
 const jwt = require("jsonwebtoken");
 const validator = require("validator");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
 const User = require("../models/User");
 const RefreshToken = require("../models/RefreshToken");
+const EmailVerificationToken = require("../models/EmailVerificationToken");
 
 const { generateAccessToken, generateRefreshToken } = require("../utils/jwt");
 const issueTokens = require("../utils/issueTokens");
 const isValidPassword = require("../utils/validatePassword");
+const { sendEmail } = require("../config/email");
+const renderTemplate = require("../utils/renderTemplate");
+
+const VALID_REGISTER_ROLES = ["company", "jobseeker"];
+
+const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+const hashToken = (token) =>
+    crypto.createHash("sha256").update(token).digest("hex");
 
 
 // =========================
@@ -16,12 +27,19 @@ const isValidPassword = require("../utils/validatePassword");
 
 const registerUser = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, role } = req.body;
 
         // Check required fields
         if (!name || !email || !password) {
             return res.status(400).json({
                 message: "Name, email and password are required"
+            });
+        }
+
+        // Validate role (defaults to jobseeker)
+        if (role && !VALID_REGISTER_ROLES.includes(role)) {
+            return res.status(400).json({
+                message: "Invalid role. Allowed roles: company, jobseeker"
             });
         }
 
@@ -54,21 +72,48 @@ const registerUser = async (req, res) => {
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create user
+        // Create user (email must be verified before they can log in)
         const user = await User.create({
             name,
             email,
-            password: hashedPassword
+            password: hashedPassword,
+            role: role || "jobseeker",
+            emailVerified: false
+        });
+
+        // Generate and store a verification token (only its hash is saved)
+        const rawToken = crypto.randomBytes(32).toString("hex");
+
+        await EmailVerificationToken.create({
+            token: hashToken(rawToken),
+            userId: user.id,
+            expiresAt: new Date(Date.now() + VERIFY_TOKEN_TTL_MS)
+        });
+
+        const confirmUrl =
+            `${process.env.FRONTEND_URL}/confirm-email?token=${rawToken}`;
+
+        const html = renderTemplate("emailConfirmation", {
+            userName: user.name,
+            confirmUrl
+        });
+
+        await sendEmail({
+            to: user.email,
+            subject: "Confirm your email — Hackathon 2026",
+            html
         });
 
         // Send response
         res.status(201).json({
-            message: "User registered successfully",
+            message:
+                "User registered successfully. A confirmation email has been sent to your inbox. Please verify your email before logging in.",
             user: {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                emailVerified: user.emailVerified
             }
         });
 
@@ -120,6 +165,14 @@ const loginUser = async (req, res) => {
             });
         }
 
+        // Email must be verified before the user can log in
+        if (!user.emailVerified) {
+            return res.status(403).json({
+                message:
+                    "Please verify your email address before logging in. A confirmation link was sent to your email."
+            });
+        }
+
         // Issue access and refresh tokens
         const { accessToken, refreshToken } = await issueTokens(user);
 
@@ -135,7 +188,8 @@ const loginUser = async (req, res) => {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                emailVerified: user.emailVerified
             }
         });
 
@@ -144,6 +198,70 @@ const loginUser = async (req, res) => {
 
         res.status(500).json({
             message: error.message || "Server error"
+        });
+    }
+};
+
+// =========================
+// CONFIRM EMAIL
+// =========================
+
+const confirmEmail = async (req, res) => {
+    try {
+        const { token } = req.body;
+
+        if (!token) {
+            return res.status(400).json({
+                message: "Verification token is required"
+            });
+        }
+
+        const verificationRecord = await EmailVerificationToken.findOne({
+            where: { token: hashToken(token) }
+        });
+
+        if (!verificationRecord || verificationRecord.expiresAt < new Date()) {
+            if (verificationRecord) {
+                await verificationRecord.destroy();
+            }
+
+            return res.status(400).json({
+                message: "Invalid or expired verification token"
+            });
+        }
+
+        const user = await User.findByPk(verificationRecord.userId);
+
+        if (!user) {
+            await verificationRecord.destroy();
+
+            return res.status(400).json({
+                message: "Invalid or expired verification token"
+            });
+        }
+
+        user.emailVerified = true;
+
+        await user.save();
+
+        await verificationRecord.destroy();
+
+        res.status(200).json({
+            message: "Email confirmed successfully. You can now log in.",
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                emailVerified: user.emailVerified
+            }
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            message: "Server error"
         });
     }
 };
@@ -278,6 +396,7 @@ const logoutUser = async (req, res) => {
 module.exports = {
     registerUser,
     loginUser,
+    confirmEmail,
     refreshAccessToken,
     logoutUser
 };

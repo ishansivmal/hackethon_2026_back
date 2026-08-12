@@ -3,6 +3,7 @@ const express = require("express");
 const {
     registerUser,
     loginUser,
+    confirmEmail,
     refreshAccessToken,
     logoutUser
 } = require("../controllers/auth.controller");
@@ -22,6 +23,8 @@ const authenticateToken = require("../middleware/auth.middleware");
 router.post("/register", registerUser);
 
 router.post("/login", loginUser);
+
+router.post("/confirm-email", confirmEmail);
 
 router.post("/google", googleAuth);
 

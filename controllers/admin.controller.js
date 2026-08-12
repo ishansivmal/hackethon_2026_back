@@ -2,7 +2,7 @@ const User = require("../models/User");
 const RefreshToken = require("../models/RefreshToken");
 const PasswordResetToken = require("../models/PasswordResetToken");
 
-const VALID_ROLES = ["user", "admin"];
+const VALID_ROLES = ["user", "admin", "company", "jobseeker"];
 
 // =========================
 // GET ALL USERS
@@ -36,7 +36,7 @@ const updateUserRole = async (req, res) => {
 
         if (!VALID_ROLES.includes(role)) {
             return res.status(400).json({
-                message: "Invalid role. Allowed roles: user, admin"
+                message: "Invalid role. Allowed roles: user, admin, company, jobseeker"
             });
         }
 

@@ -1,6 +1,12 @@
 const request = require("supertest");
 const app = require("../../app");
 
+jest.mock("../../config/email", () => ({
+    sendEmail: jest.fn().mockResolvedValue({ messageId: "mocked" })
+}));
+
+const confirmLatestUser = require("../helpers/confirmUser");
+
 // ─── Admin Routes ──────────────────────────────────────────────────────────────
 // GET    /api/v1/admin/users
 // PUT    /api/v1/admin/users/:id/role
@@ -32,6 +38,8 @@ describe("Admin - User Management", () => {
             .send({ name: "Regular User", email: userEmail, password: "Password@123" });
 
         regularUserId = userReg.body.user?.id;
+
+        await confirmLatestUser(app, userEmail);
 
         const userLogin = await request(app)
             .post("/api/v1/auth/login")
@@ -101,7 +109,7 @@ describe("Admin - User Management", () => {
                 .send({ role: "superuser" });
 
             expect(res.statusCode).toBe(400);
-            expect(res.body).toHaveProperty("message", "Invalid role. Allowed roles: user, admin");
+            expect(res.body).toHaveProperty("message", "Invalid role. Allowed roles: user, admin, company, jobseeker");
         });
 
         test("404 - should fail when user does not exist", async () => {

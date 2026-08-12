@@ -26,13 +26,19 @@ const User = sequelize.define("User", {
 
     role: {
         type: DataTypes.STRING,
-        defaultValue: "user"
+        defaultValue: "jobseeker"
+    },
+
+    emailVerified: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     }
 });
 
 // Relationship
 const RefreshToken = require("./RefreshToken");
 const PasswordResetToken = require("./PasswordResetToken");
+const EmailVerificationToken = require("./EmailVerificationToken");
 
 User.hasMany(RefreshToken, {
     foreignKey: "userId"
@@ -47,6 +53,14 @@ User.hasMany(PasswordResetToken, {
 });
 
 PasswordResetToken.belongsTo(User, {
+    foreignKey: "userId"
+});
+
+User.hasMany(EmailVerificationToken, {
+    foreignKey: "userId"
+});
+
+EmailVerificationToken.belongsTo(User, {
     foreignKey: "userId"
 });
 

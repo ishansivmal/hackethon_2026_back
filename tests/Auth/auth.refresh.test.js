@@ -1,6 +1,12 @@
 const request = require("supertest");
 const app = require("../../app");
 
+jest.mock("../../config/email", () => ({
+    sendEmail: jest.fn().mockResolvedValue({ messageId: "mocked" })
+}));
+
+const confirmLatestUser = require("../helpers/confirmUser");
+
 // ─── POST /api/v1/auth/refresh ────────────────────────────────────────────────
 
 describe("Auth - Refresh Token", () => {
@@ -13,6 +19,8 @@ describe("Auth - Refresh Token", () => {
         await request(app)
             .post("/api/v1/auth/register")
             .send({ name: "Refresh Tester", email, password: "Password@123" });
+
+        await confirmLatestUser(app, email);
 
         const loginRes = await request(app)
             .post("/api/v1/auth/login")
