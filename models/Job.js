@@ -65,7 +65,9 @@ module.exports = (sequelize, DataTypes) => {
                     'part-time',
                     'contract',
                     'internship',
-                    'remote'
+                    'remote',
+                    'physical',
+                    'hybrid'
                 ),
                 allowNull: false
             },
