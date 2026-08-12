@@ -1,6 +1,12 @@
 const request = require("supertest");
 const app = require("../../app");
 
+jest.mock("../../config/email", () => ({
+    sendEmail: jest.fn().mockResolvedValue({ messageId: "mocked" })
+}));
+
+const confirmLatestUser = require("../helpers/confirmUser");
+
 // ─── POST /api/v1/auth/login ───────────────────────────────────────────────────
 
 describe("Auth - Login", () => {
@@ -13,6 +19,8 @@ describe("Auth - Login", () => {
         await request(app)
             .post("/api/v1/auth/register")
             .send({ name: "Login Tester", email: testEmail, password: testPassword });
+
+        await confirmLatestUser(app, testEmail);
     });
 
     // ── Success ────────────────────────────────────────────────────────────────

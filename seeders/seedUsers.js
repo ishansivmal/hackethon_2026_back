@@ -28,7 +28,8 @@ const seedUsers = async () => {
                 name: "Ishan Sivmal",
                 email: "ishansivmal@gmail.com",
                 password: adminPassword,
-                role: "admin"
+                role: "admin",
+                emailVerified: true
             }
         });
 
@@ -56,7 +57,8 @@ const seedUsers = async () => {
                 name: "Sivmal Ishan",
                 email: "sivmalishan@gmail.com",
                 password: userPassword,
-                role: "user"
+                role: "jobseeker",
+                emailVerified: true
             }
         });
 

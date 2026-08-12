@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 5000;
 
 // Connect database first
 sequelize
-    .sync()
+    .sync({ alter: true })
     .then(() => {
         console.log(
             chalk.yellow("✓ Database connected successfully!")
