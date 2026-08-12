@@ -4,6 +4,7 @@ const router = express.Router();
 
 const authenticateToken = require("../middleware/auth.middleware");
 const authorizeRoles = require("../middleware/role.middleware");
+const upload = require("../middleware/upload.middleware");
 
 const {
     postInternship,
@@ -14,10 +15,10 @@ const {
 // Everything below requires an authenticated company account
 router.use(authenticateToken, authorizeRoles("company"));
 
-router.post("/internships", postInternship);
+router.post("/internships", upload.single("photo"), postInternship);
 
-router.post("/jobs", postJob);
+router.post("/jobs", upload.single("image"), postJob);
 
-router.post("/problems", postProblem);
+router.post("/problems", upload.single("pdf"), postProblem);
 
 module.exports = router;

@@ -1,11 +1,26 @@
 const { Sequelize } = require("sequelize");
 const sequelize = require("../config/database");
+const cloudinary = require("../config/cloudinaryConfig");
 
 // The job/internship/problem models are factory-style (they take sequelize).
 // Instantiate them once here so they are registered with the shared connection.
 const Internship = require("../models/Internship")(sequelize, Sequelize.DataTypes);
 const Job = require("../models/Job")(sequelize, Sequelize.DataTypes);
 const Problem = require("../models/Problem")(sequelize, Sequelize.DataTypes);
+
+// Uploads a file buffer to Cloudinary and resolves with the secure URL.
+const uploadToCloudinary = (buffer, folder, resourceType = "auto") => {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            { folder, resource_type: resourceType },
+            (error, result) => {
+                if (error) return reject(error);
+                resolve(result.secure_url);
+            }
+        );
+        stream.end(buffer);
+    });
+};
 
 // Normalizes a deadline value into a bare "YYYY-MM-DD" string (a DATETIME
 // column stores it as midnight UTC). Returns null when the value cannot be
@@ -38,7 +53,6 @@ const postInternship = async (req, res) => {
     try {
         const {
             title,
-            photo,
             description,
             requirements,
             duration,
@@ -62,16 +76,22 @@ const postInternship = async (req, res) => {
             });
         }
 
+        let photoUrl = null;
+
+        if (req.file) {
+            photoUrl = await uploadToCloudinary(req.file.buffer, "hackathon/internships", "image");
+        }
+
         const internship = await Internship.create({
             user_ID: req.user.id, // from the authenticated JWT, never the client
             title,
-            photoUrl: photo || null,
+            photoUrl,
             description,
             requirements,
             duration,
             location,
             internType: String(internType || "physical").toLowerCase(),
-            isPaid: Boolean(isPaid),
+            isPaid: isPaid === true || isPaid === "true",
             deadline: normalizedDeadline
         });
 
@@ -104,7 +124,6 @@ const postJob = async (req, res) => {
     try {
         const {
             jobPosition,
-            image,
             requirements,
             jobType,
             location,
@@ -117,10 +136,16 @@ const postJob = async (req, res) => {
             });
         }
 
+        let photoUrl = null;
+
+        if (req.file) {
+            photoUrl = await uploadToCloudinary(req.file.buffer, "hackathon/jobs", "image");
+        }
+
         const job = await Job.create({
             user_ID: req.user.id, // from the authenticated JWT, never the client
             position: jobPosition,
-            photoUrl: image || null,
+            photoUrl,
             requirements,
             jobType: String(jobType || "remote").toLowerCase(),
             location,
@@ -152,7 +177,7 @@ const postJob = async (req, res) => {
 
 const postProblem = async (req, res) => {
     try {
-        const { description, pdf } = req.body;
+        const { description } = req.body;
 
         if (!description) {
             return res.status(400).json({
@@ -160,10 +185,16 @@ const postProblem = async (req, res) => {
             });
         }
 
+        let pdf = null;
+
+        if (req.file) {
+            pdf = await uploadToCloudinary(req.file.buffer, "hackathon/problems", "auto");
+        }
+
         const problem = await Problem.create({
             user_ID: req.user.id, // from the authenticated JWT, never the client
             description,
-            pdf: pdf || null
+            pdf
         });
 
         res.status(201).json({
