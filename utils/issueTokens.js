@@ -1,4 +1,4 @@
-const RefreshToken = require("../models/RefreshToken");
+const { RefreshToken } = require("../models");
 
 const { generateAccessToken, generateRefreshToken } = require("./jwt");
 

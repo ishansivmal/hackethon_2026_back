@@ -1,67 +1,106 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("../config/database");
+'use strict';
 
-const User = sequelize.define("User", {
-    id: {
-        type: DataTypes.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
-    },
+const { Model } = require('sequelize');
 
-    name: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
+module.exports = (sequelize, DataTypes) => {
 
-    email: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true
-    },
+    class User extends Model {
 
-    password: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
+        static associate(models) {
 
-    role: {
-        type: DataTypes.STRING,
-        defaultValue: "jobseeker"
-    },
+            User.hasMany(models.RefreshToken, {
+                foreignKey: 'userId',
+                as: 'refreshTokens'
+            });
 
-    emailVerified: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false
+            User.hasMany(models.PasswordResetToken, {
+                foreignKey: 'userId',
+                as: 'passwordResetTokens'
+            });
+
+            User.hasMany(models.EmailVerificationToken, {
+                foreignKey: 'userId',
+                as: 'emailVerificationTokens'
+            });
+
+            User.hasMany(models.Internship, {
+                foreignKey: 'user_ID',
+                as: 'internships'
+            });
+
+            User.hasMany(models.Problem, {
+                foreignKey: 'user_ID',
+                as: 'problems'
+            });
+
+            User.hasMany(models.Job, {
+                foreignKey: 'user_ID',
+                as: 'jobs'
+            });
+
+            User.hasMany(models.Solution, {
+                foreignKey: 'user_ID',
+                as: 'solutions'
+            });
+
+            User.hasMany(models.AppliedInternship, {
+                foreignKey: 'user_ID',
+                as: 'appliedInternships'
+            });
+
+            User.hasMany(models.AppliedJob, {
+                foreignKey: 'user_ID',
+                as: 'appliedJobs'
+            });
+
+            User.hasMany(models.AppliedProblem, {
+                foreignKey: 'user_ID',
+                as: 'appliedProblems'
+            });
+        }
     }
-});
 
-// Relationship
-const RefreshToken = require("./RefreshToken");
-const PasswordResetToken = require("./PasswordResetToken");
-const EmailVerificationToken = require("./EmailVerificationToken");
+    User.init(
+        {
+            id: {
+                type: DataTypes.INTEGER,
+                autoIncrement: true,
+                primaryKey: true
+            },
 
-User.hasMany(RefreshToken, {
-    foreignKey: "userId"
-});
+            name: {
+                type: DataTypes.STRING,
+                allowNull: false
+            },
 
-RefreshToken.belongsTo(User, {
-    foreignKey: "userId"
-});
+            email: {
+                type: DataTypes.STRING,
+                allowNull: false,
+                unique: true
+            },
 
-User.hasMany(PasswordResetToken, {
-    foreignKey: "userId"
-});
+            password: {
+                type: DataTypes.STRING,
+                allowNull: false
+            },
 
-PasswordResetToken.belongsTo(User, {
-    foreignKey: "userId"
-});
+            role: {
+                type: DataTypes.STRING,
+                defaultValue: 'jobseeker'
+            },
 
-User.hasMany(EmailVerificationToken, {
-    foreignKey: "userId"
-});
+            emailVerified: {
+                type: DataTypes.BOOLEAN,
+                defaultValue: false
+            }
+        },
+        {
+            sequelize,
+            modelName: 'User',
+            tableName: 'Users',
+            timestamps: true
+        }
+    );
 
-EmailVerificationToken.belongsTo(User, {
-    foreignKey: "userId"
-});
-
-module.exports = User;
+    return User;
+};

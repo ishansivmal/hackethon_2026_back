@@ -2,7 +2,7 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const { OAuth2Client } = require("google-auth-library");
 
-const User = require("../models/User");
+const { User } = require("../models");
 const issueTokens = require("../utils/issueTokens");
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);

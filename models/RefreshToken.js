@@ -1,27 +1,49 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("../config/database");
+'use strict';
 
-const RefreshToken = sequelize.define("RefreshToken", {
-    id: {
-        type: DataTypes.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
-    },
+const { Model } = require('sequelize');
 
-    token: {
-        type: DataTypes.TEXT,
-        allowNull: false
-    },
+module.exports = (sequelize, DataTypes) => {
 
-    userId: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
+    class RefreshToken extends Model {
 
-    expiresAt: {
-        type: DataTypes.DATE,
-        allowNull: false
+        static associate(models) {
+            RefreshToken.belongsTo(models.User, {
+                foreignKey: 'userId',
+                as: 'user'
+            });
+        }
     }
-});
 
-module.exports = RefreshToken;
+    RefreshToken.init(
+        {
+            id: {
+                type: DataTypes.INTEGER,
+                autoIncrement: true,
+                primaryKey: true
+            },
+
+            token: {
+                type: DataTypes.TEXT,
+                allowNull: false
+            },
+
+            userId: {
+                type: DataTypes.INTEGER,
+                allowNull: false
+            },
+
+            expiresAt: {
+                type: DataTypes.DATE,
+                allowNull: false
+            }
+        },
+        {
+            sequelize,
+            modelName: 'RefreshToken',
+            tableName: 'RefreshTokens',
+            timestamps: true
+        }
+    );
+
+    return RefreshToken;
+};

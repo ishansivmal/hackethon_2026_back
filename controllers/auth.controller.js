@@ -3,9 +3,7 @@ const validator = require("validator");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 
-const User = require("../models/User");
-const RefreshToken = require("../models/RefreshToken");
-const EmailVerificationToken = require("../models/EmailVerificationToken");
+const { User, RefreshToken, EmailVerificationToken } = require("../models");
 
 const { generateAccessToken, generateRefreshToken } = require("../utils/jwt");
 const issueTokens = require("../utils/issueTokens");

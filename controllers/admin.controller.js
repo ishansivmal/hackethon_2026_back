@@ -1,6 +1,4 @@
-const User = require("../models/User");
-const RefreshToken = require("../models/RefreshToken");
-const PasswordResetToken = require("../models/PasswordResetToken");
+const { User, RefreshToken, PasswordResetToken } = require("../models");
 
 const VALID_ROLES = ["user", "admin", "company", "jobseeker"];
 
