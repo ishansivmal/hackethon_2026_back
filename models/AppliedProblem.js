@@ -52,6 +52,11 @@ module.exports = (sequelize, DataTypes) => {
                 onDelete: 'CASCADE'
             },
 
+            cv_url: {
+                type: DataTypes.STRING,
+                allowNull: true
+            },
+
             isSelected: {
                 type: DataTypes.BOOLEAN,
                 allowNull: false,
