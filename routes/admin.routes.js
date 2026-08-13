@@ -7,6 +7,8 @@ const authorizeRoles = require("../middleware/role.middleware");
 
 const {
     getAllUsers,
+    createUser,
+    updateUser,
     updateUserRole,
     deleteUser
 } = require("../controllers/admin.controller");
@@ -15,6 +17,10 @@ const {
 router.use(authenticateToken, authorizeRoles("admin"));
 
 router.get("/users", getAllUsers);
+
+router.post("/users", createUser);
+
+router.put("/users/:id", updateUser);
 
 router.put("/users/:id/role", updateUserRole);
 
