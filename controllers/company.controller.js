@@ -11,6 +11,7 @@ const {
     AppliedJob,
     AppliedProblem,
     Solution,
+    Company,
     User
 } = require("../models");
 
@@ -679,6 +680,20 @@ const updateApplicationSelection = async (req, res) => {
 
         await application.update({ isSelected });
 
+        // Resolve the company name from the database. The access token only
+        // carries { id, email, role }, so req.user.name is always undefined.
+        const companyRecord = await Company.findOne({
+            where: { user_ID: req.user.id },
+            attributes: ["name"]
+        });
+
+        let companyName = companyRecord?.name;
+
+        if (!companyName) {
+            const companyUser = await User.findByPk(req.user.id, { attributes: ["name"] });
+            companyName = companyUser?.name;
+        }
+
         // Notify the applicant by email when they are selected
         let emailSent = false;
 
@@ -686,29 +701,39 @@ const updateApplicationSelection = async (req, res) => {
             const emailMeta = emailMetas[type];
             const parent = application[config.parentAlias];
             const vars = emailMeta.vars(parent);
+            const recipient = application.user?.email;
 
-            try {
-                const html = renderTemplate(emailMeta.template, {
-                    applicantName: application.user?.name || "Applicant",
-                    companyName: req.user.name,
-                    ...vars
-                });
+            if (!recipient) {
+                console.error(
+                    "Selection email skipped: applicant has no email address",
+                    { type, id, applicant: application.user?.name }
+                );
+            } else {
+                try {
+                    const html = renderTemplate(emailMeta.template, {
+                        applicantName: application.user?.name || "Applicant",
+                        companyName: companyName || "Our company",
+                        ...vars
+                    });
 
-                await sendEmail({
-                    to: application.user?.email,
-                    subject: emailMeta.subject(vars.title),
-                    html
-                });
+                    await sendEmail({
+                        to: recipient,
+                        subject: emailMeta.subject(vars.title),
+                        html
+                    });
 
-                emailSent = true;
-            } catch (emailError) {
-                console.error("Failed to send selection email:", emailError);
+                    emailSent = true;
+                } catch (emailError) {
+                    console.error("Failed to send selection email:", emailError);
+                }
             }
         }
 
         res.status(200).json({
             message: isSelected
-                ? "Applicant selected and notified by email"
+                ? emailSent
+                    ? "Applicant selected and notified by email"
+                    : "Applicant selected, but the notification email could not be sent"
                 : "Applicant marked as pending",
             isSelected,
             emailSent
