@@ -1,3 +1,4 @@
+const { Op } = require("sequelize");
 const cloudinary = require("../config/cloudinaryConfig");
 const { sendEmail } = require("../config/email");
 const renderTemplate = require("../utils/renderTemplate");
@@ -9,6 +10,7 @@ const {
     AppliedInternship,
     AppliedJob,
     AppliedProblem,
+    Solution,
     User
 } = require("../models");
 
@@ -274,6 +276,41 @@ const getCompanyDashboard = async (req, res) => {
                 order: [["problem_ID", "DESC"]]
             })
         ]);
+
+        // Attach each applicant's submitted solution (budget, time, solution text,
+        // link/document) to their problem application so the company can review it.
+        const problemIds = problems.map((p) => p.problem_ID);
+        let solutions = [];
+
+        if (problemIds.length) {
+            solutions = await Solution.findAll({
+                where: { problem_ID: { [Op.in]: problemIds } },
+                attributes: [
+                    "solution_ID",
+                    "user_ID",
+                    "problem_ID",
+                    "isPdfAvailable",
+                    "pdf",
+                    "url",
+                    "time",
+                    "budget",
+                    "solution"
+                ]
+            });
+        }
+
+        const solutionByKey = new Map(
+            solutions.map((s) => [`${s.user_ID}:${s.problem_ID}`, s])
+        );
+
+        problems.forEach((problem) => {
+            problem.applications.forEach((app) => {
+                app.setDataValue(
+                    "solution",
+                    solutionByKey.get(`${app.user_ID}:${problem.problem_ID}`) || null
+                );
+            });
+        });
 
         const counts = {
             internships: internships.length,
