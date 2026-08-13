@@ -5,6 +5,7 @@ const cloudinary = require("../../config/cloudinaryConfig");
 const AppliedInternship = require("../../models/AppliedInternship")(sequelize, Sequelize.DataTypes);
 const AppliedJob = require("../../models/AppliedJob")(sequelize, Sequelize.DataTypes);
 const AppliedProblem = require("../../models/AppliedProblem")(sequelize, Sequelize.DataTypes);
+const Solution = require("../../models/Solution")(sequelize, Sequelize.DataTypes);
 
 const uploadToCloudinary = (buffer, folder, resourceType = "auto") => {
     return new Promise((resolve, reject) => {
@@ -72,13 +73,30 @@ const applyForProblem = async (req, res) => {
             cv_url = await uploadToCloudinary(req.file.buffer, "hackathon/applications/problems", "auto");
         }
 
-        const application = await AppliedProblem.create({
-            user_ID: req.user.id,
-            problem_ID,
-            cv_url
+        // A problem application must write to BOTH the applied_problem table
+        // (the application record) AND the solution table (the submitted solution).
+        const { application, solution } = await sequelize.transaction(async (t) => {
+            const application = await AppliedProblem.create({
+                user_ID: req.user.id,
+                problem_ID,
+                cv_url
+            }, { transaction: t });
+
+            const solution = await Solution.create({
+                user_ID: req.user.id,
+                problem_ID,
+                isPdfAvailable: !!cv_url,
+                pdf: cv_url,
+                url: req.body.url || null,
+                time: req.body.time || null,
+                budget: req.body.budget || null,
+                solution: req.body.solution || "Solution submitted as attached document."
+            }, { transaction: t });
+
+            return { application, solution };
         });
 
-        res.status(201).json({ message: "Applied to problem successfully", application });
+        res.status(201).json({ message: "Applied to problem successfully", application, solution });
     } catch (error) {
         console.error("Error applying to problem:", error);
         res.status(500).json({ message: "Server error or you have already applied." });
