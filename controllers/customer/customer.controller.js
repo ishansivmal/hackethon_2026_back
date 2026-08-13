@@ -5,6 +5,7 @@ const cloudinary = require("../../config/cloudinaryConfig");
 const AppliedInternship = require("../../models/AppliedInternship")(sequelize, Sequelize.DataTypes);
 const AppliedJob = require("../../models/AppliedJob")(sequelize, Sequelize.DataTypes);
 const AppliedProblem = require("../../models/AppliedProblem")(sequelize, Sequelize.DataTypes);
+const Solution = require("../../models/Solution")(sequelize, Sequelize.DataTypes);
 
 const uploadToCloudinary = (buffer, folder, resourceType = "auto") => {
     return new Promise((resolve, reject) => {
@@ -66,6 +67,7 @@ const applyForJob = async (req, res) => {
 const applyForProblem = async (req, res) => {
     try {
         const problem_ID = req.params.id;
+        const { time, budget, solution } = req.body;
         let cv_url = null;
 
         if (req.file) {
@@ -76,6 +78,18 @@ const applyForProblem = async (req, res) => {
             user_ID: req.user.id,
             problem_ID,
             cv_url
+        });
+
+        // Map and insert exactly into the custom Solution relational table 
+        await Solution.create({
+            user_ID: req.user.id,
+            problem_ID: problem_ID,
+            isPdfAvailable: !!cv_url,
+            pdf: cv_url,
+            url: null,
+            time: time || null,
+            budget: budget ? parseFloat(budget) : null,
+            solution: solution || 'Included in PDF'
         });
 
         res.status(201).json({ message: "Applied to problem successfully", application });
