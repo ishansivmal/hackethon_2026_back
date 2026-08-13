@@ -3,8 +3,7 @@ const { Internship, Job, Problem, User } = require("../models");
 const getInternships = async (req, res) => {
     try {
         const internships = await Internship.findAll({
-            include: [{ model: User, as: 'user', attributes: ['id', 'name', 'email'] }],
-            order: [['createdAt', 'DESC']]
+            include: [{ model: User, as: 'user', attributes: ['id', 'name', 'email'] }]
         });
         res.status(200).json(internships);
     } catch (error) {
@@ -16,8 +15,7 @@ const getInternships = async (req, res) => {
 const getJobs = async (req, res) => {
     try {
         const jobs = await Job.findAll({
-            include: [{ model: User, as: 'user', attributes: ['id', 'name', 'email'] }],
-            order: [['createdAt', 'DESC']]
+            include: [{ model: User, as: 'user', attributes: ['id', 'name', 'email'] }]
         });
         res.status(200).json(jobs);
     } catch (error) {
@@ -29,8 +27,7 @@ const getJobs = async (req, res) => {
 const getProblems = async (req, res) => {
     try {
         const problems = await Problem.findAll({
-            include: [{ model: User, as: 'user', attributes: ['id', 'name', 'email'] }],
-            order: [['createdAt', 'DESC']]
+            include: [{ model: User, as: 'user', attributes: ['id', 'name', 'email'] }]
         });
         res.status(200).json(problems);
     } catch (error) {
