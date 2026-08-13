@@ -20,12 +20,15 @@ const {
     deleteProblem
 } = require("../controllers/company.controller");
 
+const { rankApplicants } = require("../controllers/ai.controller");
+
 // Everything below requires an authenticated company account
 router.use(authenticateToken, authorizeRoles("company"));
 
 router.get("/dashboard", getCompanyDashboard);
 
 router.put("/applications/:type/:id", updateApplicationSelection);
+router.post("/applications/rank/:type/:id", rankApplicants);
 
 router.post("/internships", upload.single("photo"), postInternship);
 router.put("/internships/:id", upload.single("photo"), updateInternship);
