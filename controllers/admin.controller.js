@@ -1,4 +1,5 @@
 const bcrypt = require("bcryptjs");
+const { Op } = require("sequelize");
 const { User, Company, RefreshToken, PasswordResetToken } = require("../models");
 
 const VALID_ROLES = ["user", "admin", "company", "jobseeker"];
@@ -189,6 +190,34 @@ const deleteUser = async (req, res) => {
 
 const getAllCompanies = async (req, res) => {
     try {
+        // Every User with role "company" is a company. Registration currently
+        // only creates the User row, so backfill a linked Company profile for
+        // any company-role user that does not have one yet. This makes them
+        // appear (and become manageable) in Company Management.
+        const companyUsers = await User.findAll({
+            where: { role: "company" },
+            attributes: ["id", "name", "email"]
+        });
+
+        const existingCompanies = await Company.findAll({
+            where: { user_ID: { [Op.ne]: null } },
+            attributes: ["user_ID"]
+        });
+
+        const linkedUserIds = new Set(existingCompanies.map((c) => c.user_ID));
+
+        for (const user of companyUsers) {
+            if (!linkedUserIds.has(user.id)) {
+                await Company.create({
+                    user_ID: user.id,
+                    name: user.name,
+                    email: user.email,
+                    category: "Software & IT",
+                    status: "Pending"
+                });
+            }
+        }
+
         const companies = await Company.findAll({
             attributes: ["id", "name", "email", "category", "status", "website", "location", "description", "createdAt"],
             order: [["id", "ASC"]]
@@ -306,6 +335,14 @@ const deleteCompany = async (req, res) => {
             return res.status(400).json({
                 message: "Only pending companies can be deleted. Approved companies cannot be deleted."
             });
+        }
+
+        // Remove the linked account (User row) too so a deleted company
+        // account is not silently recreated by the company backfill.
+        if (company.user_ID) {
+            await RefreshToken.destroy({ where: { userId: company.user_ID } });
+            await PasswordResetToken.destroy({ where: { userId: company.user_ID } });
+            await User.destroy({ where: { id: company.user_ID } });
         }
 
         await company.destroy();

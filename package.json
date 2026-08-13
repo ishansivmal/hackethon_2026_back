@@ -38,6 +38,7 @@
     "multer": "^2.2.0",
     "mysql2": "^3.23.3",
     "nodemailer": "^9.0.5",
+    "pdf-parse": "^1.1.1",
     "sequelize": "^6.37.8",
     "validator": "^13.15.35"
   },
