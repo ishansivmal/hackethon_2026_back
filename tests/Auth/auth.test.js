@@ -3,6 +3,7 @@
 // Usage: npx jest tests/Auth/auth.test.js --detectOpenHandles --forceExit
 
 require("./auth.register.test");
+require("./auth.confirm.test");
 require("./auth.login.test");
 require("./auth.refresh.test");
 require("./auth.logout.test");

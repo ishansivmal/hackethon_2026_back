@@ -4,10 +4,10 @@ const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
 
-    class RefreshToken extends Model {
+    class EmailVerificationToken extends Model {
 
         static associate(models) {
-            RefreshToken.belongsTo(models.User, {
+            EmailVerificationToken.belongsTo(models.User, {
                 foreignKey: 'userId',
                 as: 'user',
                 onDelete: 'CASCADE',
@@ -16,7 +16,7 @@ module.exports = (sequelize, DataTypes) => {
         }
     }
 
-    RefreshToken.init(
+    EmailVerificationToken.init(
         {
             id: {
                 type: DataTypes.INTEGER,
@@ -25,7 +25,7 @@ module.exports = (sequelize, DataTypes) => {
             },
 
             token: {
-                type: DataTypes.TEXT,
+                type: DataTypes.STRING(64),
                 allowNull: false
             },
 
@@ -41,11 +41,11 @@ module.exports = (sequelize, DataTypes) => {
         },
         {
             sequelize,
-            modelName: 'RefreshToken',
-            tableName: 'RefreshTokens',
+            modelName: 'EmailVerificationToken',
+            tableName: 'EmailVerificationTokens',
             timestamps: true
         }
     );
 
-    return RefreshToken;
+    return EmailVerificationToken;
 };

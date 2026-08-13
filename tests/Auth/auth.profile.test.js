@@ -1,6 +1,12 @@
 const request = require("supertest");
 const app = require("../../app");
 
+jest.mock("../../config/email", () => ({
+    sendEmail: jest.fn().mockResolvedValue({ messageId: "mocked" })
+}));
+
+const confirmLatestUser = require("../helpers/confirmUser");
+
 // ─── GET /api/v1/auth/profile ─────────────────────────────────────────────────
 
 describe("Auth - Profile (Protected Route)", () => {
@@ -13,6 +19,8 @@ describe("Auth - Profile (Protected Route)", () => {
         await request(app)
             .post("/api/v1/auth/register")
             .send({ name: "Profile Tester", email, password: "Password@123" });
+
+        await confirmLatestUser(app, email);
 
         const loginRes = await request(app)
             .post("/api/v1/auth/login")

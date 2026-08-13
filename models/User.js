@@ -1,53 +1,126 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("../config/database");
+'use strict';
 
-const User = sequelize.define("User", {
-    id: {
-        type: DataTypes.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
-    },
+const { Model } = require('sequelize');
 
-    name: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
+module.exports = (sequelize, DataTypes) => {
 
-    email: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true
-    },
+    class User extends Model {
 
-    password: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
+        static associate(models) {
 
-    role: {
-        type: DataTypes.STRING,
-        defaultValue: "user"
+            User.hasMany(models.RefreshToken, {
+                foreignKey: 'userId',
+                as: 'refreshTokens',
+                onDelete: 'CASCADE',
+                hooks: true
+            });
+
+            User.hasMany(models.PasswordResetToken, {
+                foreignKey: 'userId',
+                as: 'passwordResetTokens',
+                onDelete: 'CASCADE',
+                hooks: true
+            });
+
+            User.hasMany(models.EmailVerificationToken, {
+                foreignKey: 'userId',
+                as: 'emailVerificationTokens',
+                onDelete: 'CASCADE',
+                hooks: true
+            });
+
+            User.hasMany(models.Internship, {
+                foreignKey: 'user_ID',
+                as: 'internships',
+                onDelete: 'CASCADE',
+                hooks: true
+            });
+
+            User.hasMany(models.Problem, {
+                foreignKey: 'user_ID',
+                as: 'problems',
+                onDelete: 'CASCADE',
+                hooks: true
+            });
+
+            User.hasMany(models.Job, {
+                foreignKey: 'user_ID',
+                as: 'jobs',
+                onDelete: 'CASCADE',
+                hooks: true
+            });
+
+            User.hasMany(models.Solution, {
+                foreignKey: 'user_ID',
+                as: 'solutions',
+                onDelete: 'CASCADE',
+                hooks: true
+            });
+
+            User.hasMany(models.AppliedInternship, {
+                foreignKey: 'user_ID',
+                as: 'appliedInternships',
+                onDelete: 'CASCADE',
+                hooks: true
+            });
+
+            User.hasMany(models.AppliedJob, {
+                foreignKey: 'user_ID',
+                as: 'appliedJobs',
+                onDelete: 'CASCADE',
+                hooks: true
+            });
+
+            User.hasMany(models.AppliedProblem, {
+                foreignKey: 'user_ID',
+                as: 'appliedProblems',
+                onDelete: 'CASCADE',
+                hooks: true
+            });
+        }
     }
-});
 
-// Relationship
-const RefreshToken = require("./RefreshToken");
-const PasswordResetToken = require("./PasswordResetToken");
+    User.init(
+        {
+            id: {
+                type: DataTypes.INTEGER,
+                autoIncrement: true,
+                primaryKey: true
+            },
 
-User.hasMany(RefreshToken, {
-    foreignKey: "userId"
-});
+            name: {
+                type: DataTypes.STRING,
+                allowNull: false
+            },
 
-RefreshToken.belongsTo(User, {
-    foreignKey: "userId"
-});
+            email: {
+                type: DataTypes.STRING,
+                allowNull: false,
+                unique: true
+            },
 
-User.hasMany(PasswordResetToken, {
-    foreignKey: "userId"
-});
+            password: {
+                type: DataTypes.STRING,
+                allowNull: false
+            },
 
-PasswordResetToken.belongsTo(User, {
-    foreignKey: "userId"
-});
+            role: {
+                type: DataTypes.STRING,
+                defaultValue: 'jobseeker'
+            },
 
-module.exports = User;
+            emailVerified: {
+                type: DataTypes.BOOLEAN,
+                defaultValue: false
+            }
+        },
+        {
+            sequelize,
+            modelName: 'User',
+            tableName: 'Users',
+            timestamps: true
+        }
+    );
+
+    return User;
+};

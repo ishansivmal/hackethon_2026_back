@@ -1,0 +1,92 @@
+const { Sequelize } = require("sequelize");
+const sequelize = require("../../config/database");
+const cloudinary = require("../../config/cloudinaryConfig");
+
+const AppliedInternship = require("../../models/AppliedInternship")(sequelize, Sequelize.DataTypes);
+const AppliedJob = require("../../models/AppliedJob")(sequelize, Sequelize.DataTypes);
+const AppliedProblem = require("../../models/AppliedProblem")(sequelize, Sequelize.DataTypes);
+
+const uploadToCloudinary = (buffer, folder, resourceType = "auto") => {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            { folder, resource_type: resourceType },
+            (error, result) => {
+                if (error) return reject(error);
+                resolve(result.secure_url);
+            }
+        );
+        stream.end(buffer);
+    });
+};
+
+const applyForInternship = async (req, res) => {
+    try {
+        const internship_ID = req.params.id;
+        let cv_url = null;
+
+        if (req.file) {
+            cv_url = await uploadToCloudinary(req.file.buffer, "hackathon/applications/internships", "auto");
+        }
+
+        const application = await AppliedInternship.create({
+            user_ID: req.user.id,
+            internship_ID,
+            cv_url
+        });
+
+        res.status(201).json({ message: "Applied to internship successfully", application });
+    } catch (error) {
+        console.error("Error applying to internship:", error);
+        res.status(500).json({ message: "Server error or you have already applied." });
+    }
+};
+
+const applyForJob = async (req, res) => {
+    try {
+        const job_ID = req.params.id;
+        let cv_url = null;
+
+        if (req.file) {
+            cv_url = await uploadToCloudinary(req.file.buffer, "hackathon/applications/jobs", "auto");
+        }
+
+        const application = await AppliedJob.create({
+            user_ID: req.user.id,
+            job_ID,
+            cv_url
+        });
+
+        res.status(201).json({ message: "Applied to job successfully", application });
+    } catch (error) {
+        console.error("Error applying to job:", error);
+        res.status(500).json({ message: "Server error or you have already applied." });
+    }
+};
+
+const applyForProblem = async (req, res) => {
+    try {
+        const problem_ID = req.params.id;
+        let cv_url = null;
+
+        if (req.file) {
+            cv_url = await uploadToCloudinary(req.file.buffer, "hackathon/applications/problems", "auto");
+        }
+
+        const application = await AppliedProblem.create({
+            user_ID: req.user.id,
+            problem_ID,
+            cv_url
+        });
+
+        res.status(201).json({ message: "Applied to problem successfully", application });
+    } catch (error) {
+        console.error("Error applying to problem:", error);
+        res.status(500).json({ message: "Server error or you have already applied." });
+    }
+};
+
+module.exports = {
+    applyForInternship,
+    applyForJob,
+    applyForProblem
+};

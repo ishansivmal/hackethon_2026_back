@@ -2,11 +2,10 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const validator = require("validator");
 
-const User = require("../models/User");
-const RefreshToken = require("../models/RefreshToken");
-const PasswordResetToken = require("../models/PasswordResetToken");
+const { User, RefreshToken, PasswordResetToken } = require("../models");
 const { sendEmail } = require("../config/email");
 const isValidPassword = require("../utils/validatePassword");
+const renderTemplate = require("../utils/renderTemplate");
 
 const hashToken = (token) =>
     crypto.createHash("sha256").update(token).digest("hex");
@@ -51,15 +50,15 @@ const forgotPassword = async (req, res) => {
         const resetUrl =
             `${process.env.FRONTEND_URL}/reset-password?token=${rawToken}`;
 
+        const html = renderTemplate("passwordReset", {
+            userName: user.name,
+            resetUrl
+        });
+
         await sendEmail({
             to: user.email,
             subject: "Password Reset Request",
-            html:
-                `<p>Hi ${user.name},</p>` +
-                `<p>You requested a password reset for your account.</p>` +
-                `<p>Click the link below to choose a new password:</p>` +
-                `<p><a href="${resetUrl}">Reset my password</a></p>` +
-                `<p>This link is valid for 1 hour. If you did not request this, you can safely ignore this email.</p>`
+            html
         });
 
         res.status(200).json({

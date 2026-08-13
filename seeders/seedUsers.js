@@ -1,8 +1,7 @@
 require("dotenv").config();
 
 const bcrypt = require("bcryptjs");
-const sequelize = require("../config/database");
-const User = require("../models/User");
+const { sequelize, User } = require("../models");
 
 const seedUsers = async () => {
     try {
@@ -28,7 +27,8 @@ const seedUsers = async () => {
                 name: "Ishan Sivmal",
                 email: "ishansivmal@gmail.com",
                 password: adminPassword,
-                role: "admin"
+                role: "admin",
+                emailVerified: true
             }
         });
 
@@ -56,7 +56,8 @@ const seedUsers = async () => {
                 name: "Sivmal Ishan",
                 email: "sivmalishan@gmail.com",
                 password: userPassword,
-                role: "user"
+                role: "jobseeker",
+                emailVerified: true
             }
         });
 

@@ -1,17 +1,14 @@
 require("dotenv").config();
 
 const app = require("./app");
-const sequelize = require("./config/database");
+const { sequelize } = require('./models');
 const chalk = require("chalk");
-
-// Import models so Sequelize knows about them
-require("./models/User");
 
 const PORT = process.env.PORT || 5000;
 
 // Connect database first
 sequelize
-    .sync()
+    .sync({ alter: true })
     .then(() => {
         console.log(
             chalk.yellow("✓ Database connected successfully!")

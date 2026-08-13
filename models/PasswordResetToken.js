@@ -1,27 +1,51 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("../config/database");
+'use strict';
 
-const PasswordResetToken = sequelize.define("PasswordResetToken", {
-    id: {
-        type: DataTypes.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
-    },
+const { Model } = require('sequelize');
 
-    token: {
-        type: DataTypes.STRING(64),
-        allowNull: false
-    },
+module.exports = (sequelize, DataTypes) => {
 
-    userId: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
+    class PasswordResetToken extends Model {
 
-    expiresAt: {
-        type: DataTypes.DATE,
-        allowNull: false
+        static associate(models) {
+            PasswordResetToken.belongsTo(models.User, {
+                foreignKey: 'userId',
+                as: 'user',
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE'
+            });
+        }
     }
-});
 
-module.exports = PasswordResetToken;
+    PasswordResetToken.init(
+        {
+            id: {
+                type: DataTypes.INTEGER,
+                autoIncrement: true,
+                primaryKey: true
+            },
+
+            token: {
+                type: DataTypes.STRING(64),
+                allowNull: false
+            },
+
+            userId: {
+                type: DataTypes.INTEGER,
+                allowNull: false
+            },
+
+            expiresAt: {
+                type: DataTypes.DATE,
+                allowNull: false
+            }
+        },
+        {
+            sequelize,
+            modelName: 'PasswordResetToken',
+            tableName: 'PasswordResetTokens',
+            timestamps: true
+        }
+    );
+
+    return PasswordResetToken;
+};
