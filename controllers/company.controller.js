@@ -1,4 +1,6 @@
 const cloudinary = require("../config/cloudinaryConfig");
+const { sendEmail } = require("../config/email");
+const renderTemplate = require("../utils/renderTemplate");
 
 const {
     Internship,
@@ -6,8 +8,12 @@ const {
     Problem,
     AppliedInternship,
     AppliedJob,
-    AppliedProblem
+    AppliedProblem,
+    User
 } = require("../models");
+
+const capitalize = (value) =>
+    value ? String(value).charAt(0).toUpperCase() + String(value).slice(1) : "";
 
 // Uploads a file buffer to Cloudinary and resolves with the secure URL.
 const uploadToCloudinary = (buffer, folder, resourceType = "auto") => {
@@ -230,7 +236,12 @@ const getCompanyDashboard = async (req, res) => {
                 include: [{
                     model: AppliedInternship,
                     as: "applications",
-                    attributes: ["applied_internship_ID", "user_ID", "isSelected"]
+                    attributes: ["applied_internship_ID", "user_ID", "cv_url", "isSelected"],
+                    include: [{
+                        model: User,
+                        as: "user",
+                        attributes: ["id", "name", "email"]
+                    }]
                 }],
                 order: [["createdAt", "DESC"]]
             }),
@@ -239,7 +250,12 @@ const getCompanyDashboard = async (req, res) => {
                 include: [{
                     model: AppliedJob,
                     as: "applications",
-                    attributes: ["applied_job_ID", "user_ID", "isSelected"]
+                    attributes: ["applied_job_ID", "user_ID", "cv_url", "isSelected"],
+                    include: [{
+                        model: User,
+                        as: "user",
+                        attributes: ["id", "name", "email"]
+                    }]
                 }],
                 order: [["job_ID", "DESC"]]
             }),
@@ -248,7 +264,12 @@ const getCompanyDashboard = async (req, res) => {
                 include: [{
                     model: AppliedProblem,
                     as: "applications",
-                    attributes: ["applied_problem_ID", "user_ID", "isSelected"]
+                    attributes: ["applied_problem_ID", "user_ID", "cv_url", "isSelected"],
+                    include: [{
+                        model: User,
+                        as: "user",
+                        attributes: ["id", "name", "email"]
+                    }]
                 }],
                 order: [["problem_ID", "DESC"]]
             })
@@ -529,11 +550,148 @@ const deleteProblem = async (req, res) => {
     }
 };
 
+// =========================
+// UPDATE APPLICATION SELECTION
+// (mark an applicant as selected / unselected)
+// =========================
+
+const updateApplicationSelection = async (req, res) => {
+    try {
+        const { type, id } = req.params;
+        const isSelected = req.body.isSelected === true || req.body.isSelected === "true";
+
+        const configs = {
+            internship: {
+                model: AppliedInternship,
+                idKey: "applied_internship_ID",
+                parent: Internship,
+                parentAlias: "internship"
+            },
+            job: {
+                model: AppliedJob,
+                idKey: "applied_job_ID",
+                parent: Job,
+                parentAlias: "job"
+            },
+            problem: {
+                model: AppliedProblem,
+                idKey: "applied_problem_ID",
+                parent: Problem,
+                parentAlias: "problem"
+            }
+        };
+
+        // Email config per application type (templates live in /templates)
+        const emailMetas = {
+            internship: {
+                template: "internshipSelected",
+                subject: (title) => `Congratulations! You've been selected for "${title}"`,
+                vars: (parent) => ({
+                    title: parent.title,
+                    location: parent.location,
+                    duration: parent.duration,
+                    internType: capitalize(parent.internType),
+                    deadline: parent.deadline
+                })
+            },
+            job: {
+                template: "jobSelected",
+                subject: (title) => `Congratulations! You've been selected for "${title}"`,
+                vars: (parent) => ({
+                    title: parent.position,
+                    location: parent.location,
+                    jobType: capitalize(parent.jobType),
+                    salary: parent.salary || "Not specified"
+                })
+            },
+            problem: {
+                template: "problemSelected",
+                subject: () => "Congratulations! You've been selected for our challenge",
+                vars: (parent) => ({
+                    title: parent.description
+                })
+            }
+        };
+
+        const config = configs[type];
+
+        if (!config) {
+            return res.status(400).json({ message: "Invalid application type" });
+        }
+
+        // Only the owner of the listing the application belongs to may update it
+        const application = await config.model.findOne({
+            where: { [config.idKey]: id },
+            include: [
+                {
+                    model: config.parent,
+                    as: config.parentAlias,
+                    where: { user_ID: req.user.id }
+                },
+                {
+                    model: User,
+                    as: "user",
+                    attributes: ["id", "name", "email"]
+                }
+            ]
+        });
+
+        if (!application) {
+            return res.status(404).json({ message: "Application not found" });
+        }
+
+        await application.update({ isSelected });
+
+        // Notify the applicant by email when they are selected
+        let emailSent = false;
+
+        if (isSelected) {
+            const emailMeta = emailMetas[type];
+            const parent = application[config.parentAlias];
+            const vars = emailMeta.vars(parent);
+
+            try {
+                const html = renderTemplate(emailMeta.template, {
+                    applicantName: application.user?.name || "Applicant",
+                    companyName: req.user.name,
+                    ...vars
+                });
+
+                await sendEmail({
+                    to: application.user?.email,
+                    subject: emailMeta.subject(vars.title),
+                    html
+                });
+
+                emailSent = true;
+            } catch (emailError) {
+                console.error("Failed to send selection email:", emailError);
+            }
+        }
+
+        res.status(200).json({
+            message: isSelected
+                ? "Applicant selected and notified by email"
+                : "Applicant marked as pending",
+            isSelected,
+            emailSent
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            message: "Server error"
+        });
+    }
+};
+
 module.exports = {
     postInternship,
     postJob,
     postProblem,
     getCompanyDashboard,
+    updateApplicationSelection,
     updateInternship,
     deleteInternship,
     updateJob,
