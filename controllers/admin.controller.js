@@ -1,8 +1,16 @@
 const bcrypt = require("bcryptjs");
-const { Op } = require("sequelize");
+const { Op, Sequelize } = require("sequelize");
 const { User, Company, RefreshToken, PasswordResetToken } = require("../models");
 
 const VALID_ROLES = ["user", "admin", "company", "jobseeker"];
+
+const MAX_PAGE_SIZE = 50;
+
+const readPaging = (req) => {
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number.parseInt(req.query.pageSize, 10) || 10));
+    return { page, pageSize };
+};
 
 // =========================
 // GET ALL USERS
@@ -10,12 +18,69 @@ const VALID_ROLES = ["user", "admin", "company", "jobseeker"];
 
 const getAllUsers = async (req, res) => {
     try {
-        const users = await User.findAll({
-            attributes: ["id", "name", "email", "role", "emailVerified", "createdAt"],
-            order: [["id", "ASC"]]
+        const attributes = ["id", "name", "email", "role", "emailVerified", "createdAt"];
+
+        // Backward compatible: without a page param, return the full list.
+        if (req.query.page === undefined) {
+            const users = await User.findAll({
+                attributes,
+                order: [["id", "ASC"]]
+            });
+            return res.status(200).json({ users });
+        }
+
+        const { page, pageSize } = readPaging(req);
+        const { search, role } = req.query;
+
+        const where = {};
+
+        if (role && role !== "all") {
+            where.role = role;
+        }
+
+        if (search && String(search).trim()) {
+            const term = `%${String(search).trim()}%`;
+            where[Op.or] = [
+                { name: { [Op.like]: term } },
+                { email: { [Op.like]: term } }
+            ];
+        }
+
+        const total = await User.count({ where });
+
+        // Unfiltered role breakdown for the header badges.
+        const roleRows = await User.findAll({
+            attributes: ["role", [Sequelize.fn("COUNT", Sequelize.col("id")), "count"]],
+            group: ["role"],
+            raw: true
+        });
+        const counts = { total: 0, admin: 0, user: 0, jobseeker: 0, company: 0 };
+
+        roleRows.forEach((row) => {
+            const key = row.role;
+            if (key in counts) counts[key] = Number(row.count) || 0;
+            counts.total += Number(row.count) || 0;
         });
 
-        res.status(200).json({ users });
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        const currentPage = Math.min(page, totalPages);
+
+        const users = await User.findAll({
+            attributes,
+            where,
+            order: [["id", "ASC"]],
+            limit: pageSize,
+            offset: (currentPage - 1) * pageSize
+        });
+
+        res.status(200).json({
+            users,
+            total,
+            page: currentPage,
+            pageSize,
+            totalPages,
+            counts
+        });
     } catch (error) {
         console.error(error);
 
@@ -218,12 +283,62 @@ const getAllCompanies = async (req, res) => {
             }
         }
 
-        const companies = await Company.findAll({
-            attributes: ["id", "name", "email", "category", "status", "website", "location", "description", "createdAt"],
-            order: [["id", "ASC"]]
+        const attributes = ["id", "name", "email", "category", "status", "website", "location", "description", "createdAt"];
+
+        // Backward compatible: without a page param, return the full list.
+        if (req.query.page === undefined) {
+            const companies = await Company.findAll({
+                attributes,
+                order: [["id", "ASC"]]
+            });
+            return res.status(200).json({ companies });
+        }
+
+        const { page, pageSize } = readPaging(req);
+        const { status } = req.query;
+
+        const where = {};
+
+        if (status && status !== "all") {
+            const normalized = String(status).toLowerCase();
+            where.status = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+        }
+
+        const total = await Company.count({ where });
+
+        // Unfiltered status breakdown for the header badges / filter tabs.
+        const statusRows = await Company.findAll({
+            attributes: ["status", [Sequelize.fn("COUNT", Sequelize.col("id")), "count"]],
+            group: ["status"],
+            raw: true
+        });
+        const counts = { total: 0, pending: 0, approved: 0, suspended: 0 };
+
+        statusRows.forEach((row) => {
+            const key = String(row.status || "").toLowerCase();
+            if (key in counts) counts[key] = Number(row.count) || 0;
+            counts.total += Number(row.count) || 0;
         });
 
-        res.status(200).json({ companies });
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        const currentPage = Math.min(page, totalPages);
+
+        const companies = await Company.findAll({
+            attributes,
+            where,
+            order: [["id", "ASC"]],
+            limit: pageSize,
+            offset: (currentPage - 1) * pageSize
+        });
+
+        res.status(200).json({
+            companies,
+            total,
+            page: currentPage,
+            pageSize,
+            totalPages,
+            counts
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({

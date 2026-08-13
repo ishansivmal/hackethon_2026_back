@@ -11,6 +11,7 @@ const {
     postJob,
     postProblem,
     getCompanyDashboard,
+    getCompanyApplications,
     updateApplicationSelection,
     updateInternship,
     deleteInternship,
@@ -26,6 +27,7 @@ const { rankApplicants } = require("../controllers/ai.controller");
 router.use(authenticateToken, authorizeRoles("company"));
 
 router.get("/dashboard", getCompanyDashboard);
+router.get("/applications/:type", getCompanyApplications);
 
 router.put("/applications/:type/:id", updateApplicationSelection);
 router.post("/applications/rank/:type/:id", rankApplicants);

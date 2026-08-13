@@ -335,6 +335,149 @@ const getCompanyDashboard = async (req, res) => {
 };
 
 // =========================
+// GET PAGINATED APPLICATIONS
+// (one page of applicants for the company's own listings)
+// =========================
+
+const getCompanyApplications = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { type } = req.params;
+
+        let page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+        let pageSize = Math.min(50, Math.max(1, Number.parseInt(req.query.pageSize, 10) || 10));
+
+        const configs = {
+            internship: {
+                model: AppliedInternship,
+                listing: Internship,
+                appIdKey: "applied_internship_ID",
+                listingAs: "internship",
+                listingIdKey: "id",
+                titleKey: "title",
+                titleFallback: "Untitled internship"
+            },
+            job: {
+                model: AppliedJob,
+                listing: Job,
+                appIdKey: "applied_job_ID",
+                listingAs: "job",
+                listingIdKey: "job_ID",
+                titleKey: "position",
+                titleFallback: "Untitled job"
+            },
+            problem: {
+                model: AppliedProblem,
+                listing: Problem,
+                appIdKey: "applied_problem_ID",
+                listingAs: "problem",
+                listingIdKey: "problem_ID",
+                titleKey: "description",
+                titleFallback: "Untitled problem"
+            }
+        };
+
+        const config = configs[type];
+
+        if (!config) {
+            return res.status(400).json({ message: "Invalid application type" });
+        }
+
+        const include = [
+            {
+                model: config.listing,
+                as: config.listingAs,
+                required: true,
+                attributes: [config.listingIdKey, config.titleKey]
+            },
+            {
+                model: User,
+                as: "user",
+                attributes: ["id", "name", "email"]
+            }
+        ];
+
+        const ownerWhere = { [`$${config.listingAs}.user_ID$`]: userId };
+
+        // Count first so the page can be clamped to the last valid page.
+        const total = await config.model.count({
+            where: ownerWhere,
+            include
+        });
+
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        page = Math.min(page, totalPages);
+
+        const rows = await config.model.findAll({
+            where: ownerWhere,
+            include,
+            order: [[config.appIdKey, "DESC"]],
+            limit: pageSize,
+            offset: (page - 1) * pageSize
+        });
+
+        // Attach each applicant's solution to problem applications so the
+        // company can review the submitted proposal alongside the application.
+        if (type === "problem" && rows.length) {
+            const problemIds = rows.map((row) => row.problem_ID);
+            const solutions = await Solution.findAll({
+                where: { problem_ID: { [Op.in]: problemIds } },
+                attributes: [
+                    "solution_ID",
+                    "user_ID",
+                    "problem_ID",
+                    "isPdfAvailable",
+                    "pdf",
+                    "url",
+                    "time",
+                    "budget",
+                    "solution"
+                ]
+            });
+
+            const solutionByKey = new Map(
+                solutions.map((s) => [`${s.user_ID}:${s.problem_ID}`, s])
+            );
+
+            rows.forEach((row) => {
+                row.setDataValue(
+                    "solution",
+                    solutionByKey.get(`${row.user_ID}:${row.problem_ID}`) || null
+                );
+            });
+        }
+
+        const payloadRows = rows.map((row) => ({
+            [config.appIdKey]: row[config.appIdKey],
+            user_ID: row.user_ID,
+            cv_url: row.cv_url,
+            isSelected: row.isSelected,
+            user: row.user,
+            solution: row.solution ?? null,
+            type,
+            postedTitle:
+                row[config.listingAs]?.[config.titleKey] || config.titleFallback
+        }));
+
+        res.status(200).json({
+            type,
+            rows: payloadRows,
+            total,
+            page,
+            pageSize,
+            totalPages
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            message: "Server error"
+        });
+    }
+};
+
+// =========================
 // UPDATE INTERNSHIP
 // =========================
 
@@ -753,6 +896,7 @@ module.exports = {
     postJob,
     postProblem,
     getCompanyDashboard,
+    getCompanyApplications,
     updateApplicationSelection,
     updateInternship,
     deleteInternship,
