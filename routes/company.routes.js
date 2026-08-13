@@ -11,6 +11,7 @@ const {
     postJob,
     postProblem,
     getCompanyDashboard,
+    updateApplicationSelection,
     updateInternship,
     deleteInternship,
     updateJob,
@@ -23,6 +24,8 @@ const {
 router.use(authenticateToken, authorizeRoles("company"));
 
 router.get("/dashboard", getCompanyDashboard);
+
+router.put("/applications/:type/:id", updateApplicationSelection);
 
 router.post("/internships", upload.single("photo"), postInternship);
 router.put("/internships/:id", upload.single("photo"), updateInternship);
